@@ -14,10 +14,16 @@ import bgm from '../bgm.json';
 import { VideoPreview } from './VideoPreview';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
-import { MERGE_COMMAND, determineStart } from '@/lib/utils';
+import {
+  EXTRACT_VIDEO_COMMAND,
+  MERGE_COMMAND,
+  MERGE_COMMAND_WITHOUT_ORIGINAL,
+  determineStart,
+} from '@/lib/utils';
 
 import { z, ZodError } from 'zod';
 import { useToast } from './ui/use-toast';
+import { Checkbox } from './ui/checkbox';
 
 interface FileDataWithBuffer {
   buffer: ArrayBuffer;
@@ -39,6 +45,7 @@ export default function Layout() {
   const videoResultRef = useRef<HTMLVideoElement>(null);
   const [videoBase64, setVideoBase64] = useState<string | undefined>(undefined);
   const [seconds, setSeconds] = useState<number>();
+  const [isRetainAudio, setIsRetainAudio] = useState(true);
 
   const load = async () => {
     setIsDownloading(true);
@@ -65,9 +72,11 @@ export default function Layout() {
   async function handleFileUpload(base64File: string) {
     setIsPreviewLoading(true);
     setVideoBase64(base64File);
+
     const ffmpeg = ffmpegRef.current;
     ffmpeg.writeFile('input.mp4', await fetchFile(base64File));
     await ffmpeg.exec(['-i', 'input.mp4', '-c:v', 'copy', 'output.mp4']);
+
     const data = (await ffmpeg.readFile('output.mp4')) as FileDataWithBuffer;
     videoPreviewRef.current!.src = URL.createObjectURL(
       new Blob([data.buffer], { type: 'video/mp4' })
@@ -79,34 +88,29 @@ export default function Layout() {
     try {
       schema.parse({ startSeconds: seconds ?? 0, base64: videoBase64 });
       setIsMerging(true);
-      const { start, end } = determineStart(seconds ?? 0);
+
+      const start = determineStart(seconds ?? 0);
       const ffmpeg = ffmpegRef.current;
+
       await ffmpeg.writeFile('input.mp4', await fetchFile(videoBase64));
       await ffmpeg.writeFile('bgm.mp3', await fetchFile(bgm.base64));
-      await ffmpeg.exec([
-        '-i',
-        'input.mp4',
-        '-ss',
-        start,
-        '-t',
-        end,
-        '-an',
-        '-c:v',
-        'copy',
-        '-y',
-        'temp.mp4',
-      ]);
-      await ffmpeg.exec(MERGE_COMMAND);
+
+      await ffmpeg.exec(EXTRACT_VIDEO_COMMAND(start));
+      await ffmpeg.exec(
+        isRetainAudio ? MERGE_COMMAND : MERGE_COMMAND_WITHOUT_ORIGINAL
+      );
+
       const data = (await ffmpeg.readFile('output.mp4')) as FileDataWithBuffer;
       videoResultRef.current!.src = URL.createObjectURL(
         new Blob([data.buffer], { type: 'video/mp4' })
       );
+
       setIsMerging(false);
     } catch (error) {
       console.error(error);
       if (error instanceof ZodError) {
         console.error(error.issues);
-        error.errors.map((error) => {
+        error.errors.forEach((error) => {
           toast({
             title: 'Error',
             description: `${error.path.join('.')} ${error.message}`,
@@ -124,7 +128,7 @@ export default function Layout() {
       });
     }
     const a = document.createElement('a');
-    a.href = videoResultRef.current!.src;
+    a.href = videoResultRef.current.src;
     a.download = 'result.mp4';
     a.click();
   }
@@ -137,16 +141,33 @@ export default function Layout() {
           onFileUpload={handleFileUpload}
           isLoading={isPreviewLoading}
         />
-        <div className="grid w-full items-center gap-1.5">
-          <Label htmlFor="seconds">Start Seconds</Label>
-          <Input
-            id="seconds"
-            type="number"
-            onChange={(event) => {
-              const { value } = event.target;
-              setSeconds(Number(value));
-            }}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid w-full items-center gap-1.5">
+            <Label htmlFor="seconds">Start Seconds</Label>
+            <Input
+              id="seconds"
+              type="number"
+              onChange={(event) => {
+                const { value } = event.target;
+                setSeconds(Number(value));
+              }}
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="audio"
+              onCheckedChange={() => {
+                setIsRetainAudio(!isRetainAudio);
+              }}
+              checked={isRetainAudio}
+            />
+            <label
+              htmlFor="audio"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Keep original audio
+            </label>
+          </div>
         </div>
         <Button onClick={mergeFile}>
           {isDownloading ? (
