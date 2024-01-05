@@ -9,17 +9,24 @@ import { cn } from '@/lib/utils';
 
 interface VideoPreviewProps {
   videoPreviewRef: React.MutableRefObject<HTMLVideoElement | null>;
+  videoPreviewCurrentSeconds: number;
   videoResultRef: React.MutableRefObject<HTMLVideoElement | null>;
 }
 export function VideoPreview(props: Readonly<VideoPreviewProps>) {
   useEffect(() => {
     if (props.videoPreviewRef.current) {
       props.videoPreviewRef.current.src = props.videoPreviewRef.current.src;
+      props.videoPreviewRef.current.currentTime =
+        props.videoPreviewCurrentSeconds;
     }
     if (props.videoResultRef?.current) {
       props.videoResultRef.current.src = props.videoResultRef.current.src;
     }
-  }, [props.videoPreviewRef, props.videoResultRef]);
+  }, [
+    props.videoPreviewRef,
+    props.videoResultRef,
+    props.videoPreviewCurrentSeconds,
+  ]);
 
   return (
     <ResizablePanelGroup

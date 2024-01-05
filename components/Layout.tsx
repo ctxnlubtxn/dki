@@ -154,22 +154,24 @@ export default function Layout() {
                 const { value } = event.target;
                 setSeconds(Number(value));
               }}
+              placeholder="0 seconds"
             />
           </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="audio"
-              onCheckedChange={() => {
-                setIsRetainAudio(!isRetainAudio);
-              }}
-              checked={isRetainAudio}
-            />
+          <div className="grid w-full gap-1.5">
             <label
               htmlFor="audio"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               Keep original audio
             </label>
+            <Checkbox
+              id="audio"
+              onCheckedChange={() => {
+                setIsRetainAudio(!isRetainAudio);
+              }}
+              checked={isRetainAudio}
+              className="w-6 h-6"
+            />
           </div>
         </div>
         <Button onClick={mergeFile}>
@@ -189,6 +191,7 @@ export default function Layout() {
       </div>
       <div className="md:col-span-2 h-full w-full">
         <VideoPreview
+          videoPreviewCurrentSeconds={seconds ?? 0}
           videoPreviewRef={videoPreviewRef}
           videoResultRef={videoResultRef}
         />
