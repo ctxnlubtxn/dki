@@ -19,13 +19,15 @@ export function determineStart(start: number) {
   return `00:${minutes}:${seconds}`
 }
 
+export const VIDEO_DURATION = 40
+
 export const EXTRACT_VIDEO_COMMAND = (start: string) => [
   '-i',
   'input.mp4',
   '-ss',
   start,
   '-t',
-  '30',
+  VIDEO_DURATION.toString(),
   '-c:v',
   'libx264',
   '-preset',
@@ -65,7 +67,7 @@ export const MERGE_COMMAND_WITHOUT_ORIGINAL = [
   '-i',
   'bgm.mp3',
   '-t',
-  '00:00:30',
+  VIDEO_DURATION.toString(),
   '-c:v',
   'copy',
   '-c:a',

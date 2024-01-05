@@ -25,6 +25,7 @@ import { z, ZodError } from 'zod';
 import { useToast } from './ui/use-toast';
 import { Checkbox } from './ui/checkbox';
 import { LoadingIcon } from './ui/icons';
+import { Progress } from './ui/progress';
 
 interface FileDataWithBuffer {
   buffer: ArrayBuffer;
@@ -47,13 +48,14 @@ export default function Layout() {
   const [videoBase64, setVideoBase64] = useState<string | undefined>(undefined);
   const [seconds, setSeconds] = useState<number>();
   const [isRetainAudio, setIsRetainAudio] = useState(true);
+  const [percentage, setPercentage] = useState(0);
 
   const load = async () => {
     setIsDownloading(true);
     const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
     const ffmpeg = ffmpegRef.current;
-    ffmpeg.on('log', ({ message }) => {
-      console.log(message);
+    ffmpeg.on('progress', ({ progress }) => {
+      setPercentage(Math.round(progress * 100));
     });
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
@@ -183,6 +185,7 @@ export default function Layout() {
             'Merge'
           )}
         </Button>
+        <Progress value={percentage} />
       </div>
       <div className="md:col-span-2 h-full w-full">
         <VideoPreview
