@@ -21,13 +21,15 @@ export function determineStart(start: number) {
 
 export const VIDEO_DURATION = 40
 
-export const EXTRACT_VIDEO_COMMAND = (start: string) => [
+export const EXTRACT_VIDEO_COMMAND = (start: string, x: number, y: number) => [
   '-i',
   'input.mp4',
   '-ss',
   start,
   '-t',
   VIDEO_DURATION.toString(),
+  '-vf',
+  `drawtext=fontfile=/arial.ttf:text='dki-warkopification.vercel.app':x=${20}:y=${y - 40}:fontsize=12:fontcolor=white`,
   '-c:v',
   'libx264',
   '-preset',

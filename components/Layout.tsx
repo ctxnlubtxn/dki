@@ -39,16 +39,23 @@ const schema = z.object({
 export default function Layout() {
   const { toast } = useToast();
   const [loaded, setLoaded] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [isMerging, setIsMerging] = useState(false);
+
   const ffmpegRef = useRef(new FFmpeg());
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const videoResultRef = useRef<HTMLVideoElement>(null);
+
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isMerging, setIsMerging] = useState(false);
   const [videoBase64, setVideoBase64] = useState<string | undefined>(undefined);
   const [seconds, setSeconds] = useState<number>();
   const [isRetainAudio, setIsRetainAudio] = useState(true);
   const [percentage, setPercentage] = useState(0);
+  const [seekPosition, setSeekPosition] = useState(0);
+  const [videoDimensions, setVideoDimensions] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   const load = async () => {
     setIsDownloading(true);
@@ -56,6 +63,9 @@ export default function Layout() {
     const ffmpeg = ffmpegRef.current;
     ffmpeg.on('progress', ({ progress }) => {
       setPercentage(Math.round(progress * 100));
+    });
+    ffmpeg.on('log', ({ message }) => {
+      console.log(message);
     });
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
@@ -84,8 +94,30 @@ export default function Layout() {
     videoPreviewRef.current!.src = URL.createObjectURL(
       new Blob([data.buffer], { type: 'video/mp4' })
     );
+    console.log(
+      videoPreviewRef.current?.videoWidth,
+      videoPreviewRef.current?.videoHeight,
+      videoPreviewRef.current?.src
+    );
     setIsPreviewLoading(false);
   }
+
+  useEffect(() => {
+    const video = videoPreviewRef.current;
+
+    if (video) {
+      video.addEventListener('loadedmetadata', () => {
+        setVideoDimensions({
+          width: video.videoWidth,
+          height: video.videoHeight,
+        });
+      });
+
+      return () => {
+        video.removeEventListener('loadedmetadata', () => {});
+      };
+    }
+  }, [videoPreviewRef.current?.src]);
 
   async function mergeFile() {
     try {
@@ -97,8 +129,20 @@ export default function Layout() {
 
       await ffmpeg.writeFile('input.mp4', await fetchFile(videoBase64));
       await ffmpeg.writeFile('bgm.mp3', await fetchFile(bgm.base64));
+      await ffmpeg.writeFile(
+        'arial.ttf',
+        await fetchFile(
+          'https://raw.githubusercontent.com/ffmpegwasm/testdata/c81125391a0ada7599edc6bff2da51c1a3ed38d0/arial.ttf'
+        )
+      );
 
-      await ffmpeg.exec(EXTRACT_VIDEO_COMMAND(start));
+      await ffmpeg.exec(
+        EXTRACT_VIDEO_COMMAND(
+          start,
+          videoDimensions?.width ?? 0,
+          videoDimensions?.height ?? 0
+        )
+      );
       await ffmpeg.exec(
         isRetainAudio ? MERGE_COMMAND : MERGE_COMMAND_WITHOUT_ORIGINAL
       );
@@ -108,6 +152,7 @@ export default function Layout() {
         new Blob([data.buffer], { type: 'video/mp4' })
       );
 
+      setSeekPosition(seconds ?? 0);
       setIsMerging(false);
     } catch (error) {
       console.error(error);
@@ -191,7 +236,7 @@ export default function Layout() {
       </div>
       <div className="md:col-span-2 h-full w-full">
         <VideoPreview
-          videoPreviewCurrentSeconds={seconds ?? 0}
+          videoPreviewCurrentSeconds={seekPosition}
           videoPreviewRef={videoPreviewRef}
           videoResultRef={videoResultRef}
         />
