@@ -183,7 +183,7 @@ export default function Layout() {
 
   return (
     <main className="flex space-y-4 min-h-screen h-full flex-col md:p-24 p-6 ${inter.className} bg-white">
-      <h1 className="font-bold text-center text-2xl">dki-warkopification</h1>
+      <h1 className="font-bold text-center text-2xl"></h1>
       <div className="flex flex-col space-y-2 h-full">
         <InputFile
           onFileUpload={handleFileUpload}
